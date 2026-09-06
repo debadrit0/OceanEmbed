@@ -1,0 +1,11 @@
+numpy
+pandas
+scipy
+xarray
+netcdf4
+h5netcdf
+matplotlib
+scikit-learn
+torch
+flask
+copernicusmarine

@@ -1,0 +1,2922 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        OceanEmbed | North Indian Ocean
+    </title>
+
+
+    <!-- ================================================== -->
+    <!-- LEAFLET -->
+    <!-- ================================================== -->
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    >
+
+
+    <style>
+
+        /* ==================================================
+           GLOBAL
+        ================================================== */
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                #f5f7fa;
+
+            color:
+                #172b4d;
+
+        }
+
+
+        /* ==================================================
+           HEADER
+        ================================================== */
+
+        .topbar {
+
+            background:
+                #ffffff;
+
+            border-bottom:
+                1px solid #e1e7ee;
+
+            padding:
+                18px 28px;
+
+            position:
+                sticky;
+
+            top:
+                0;
+
+            z-index:
+                1000;
+
+        }
+
+
+        .brand {
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            gap:
+                13px;
+
+        }
+
+
+        .brand-icon {
+
+            width:
+                44px;
+
+            height:
+                44px;
+
+            border-radius:
+                10px;
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                center;
+
+            background:
+                #e7f4f8;
+
+            font-size:
+                25px;
+
+        }
+
+
+        .brand-text h1 {
+
+            margin:
+                0;
+
+            font-size:
+                25px;
+
+            color:
+                #0b3558;
+
+        }
+
+
+        .brand-text p {
+
+            margin:
+                3px 0 0;
+
+            font-size:
+                13px;
+
+            color:
+                #718096;
+
+        }
+
+
+        /* ==================================================
+           MAIN LAYOUT
+        ================================================== */
+
+        .app-layout {
+
+            display:
+                grid;
+
+            grid-template-columns:
+                285px
+                minmax(0, 1fr);
+
+            min-height:
+                calc(100vh - 81px);
+
+        }
+
+
+        /* ==================================================
+           SIDEBAR
+        ================================================== */
+
+        .sidebar {
+
+            background:
+                #ffffff;
+
+            border-right:
+                1px solid #e1e7ee;
+
+            padding:
+                22px;
+
+        }
+
+
+        .sidebar-section {
+
+            margin-bottom:
+                26px;
+
+        }
+
+
+        .sidebar-title {
+
+            text-transform:
+                uppercase;
+
+            font-size:
+                11px;
+
+            font-weight:
+                700;
+
+            letter-spacing:
+                0.08em;
+
+            color:
+                #7b8794;
+
+            margin-bottom:
+                12px;
+
+        }
+
+
+        .field {
+
+            margin-bottom:
+                15px;
+
+        }
+
+
+        .field label {
+
+            display:
+                block;
+
+            font-size:
+                13px;
+
+            font-weight:
+                600;
+
+            color:
+                #344563;
+
+            margin-bottom:
+                6px;
+
+        }
+
+
+        .field input {
+
+            width:
+                100%;
+
+            padding:
+                10px 11px;
+
+            border:
+                1px solid #cbd5e1;
+
+            border-radius:
+                7px;
+
+            font-size:
+                14px;
+
+            color:
+                #172b4d;
+
+            background:
+                #ffffff;
+
+            outline:
+                none;
+
+        }
+
+
+        .field input:focus {
+
+            border-color:
+                #168aad;
+
+            box-shadow:
+                0 0 0 2px
+                rgba(22,138,173,0.10);
+
+        }
+
+
+        /* ==================================================
+           BUTTON
+        ================================================== */
+
+        .predict-button {
+
+            width:
+                100%;
+
+            border:
+                none;
+
+            border-radius:
+                7px;
+
+            padding:
+                12px;
+
+            background:
+                #168aad;
+
+            color:
+                white;
+
+            font-size:
+                14px;
+
+            font-weight:
+                700;
+
+            cursor:
+                pointer;
+
+            transition:
+                0.2s;
+
+        }
+
+
+        .predict-button:hover {
+
+            background:
+                #0b6f8c;
+
+        }
+
+
+        .predict-button:disabled {
+
+            background:
+                #9bbdc8;
+
+            cursor:
+                not-allowed;
+
+        }
+
+
+        /* ==================================================
+           INFO BOX
+        ================================================== */
+
+        .info-box {
+
+            background:
+                #f7fafc;
+
+            border:
+                1px solid #e2e8f0;
+
+            border-radius:
+                8px;
+
+            padding:
+                12px;
+
+            font-size:
+                12px;
+
+            line-height:
+                1.65;
+
+            color:
+                #52606d;
+
+        }
+
+
+        .info-row {
+
+            display:
+                flex;
+
+            justify-content:
+                space-between;
+
+            padding:
+                2px 0;
+
+        }
+
+
+        .info-row strong {
+
+            color:
+                #243b53;
+
+        }
+
+
+        /* ==================================================
+           MAIN CONTENT
+        ================================================== */
+
+        .main-content {
+
+            padding:
+                22px;
+
+            min-width:
+                0;
+
+        }
+
+
+        /* ==================================================
+           SECTION HEADER
+        ================================================== */
+
+        .section-heading {
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                space-between;
+
+            margin-bottom:
+                12px;
+
+        }
+
+
+        .section-heading h2 {
+
+            margin:
+                0;
+
+            font-size:
+                19px;
+
+            color:
+                #172b4d;
+
+        }
+
+
+        .section-heading span {
+
+            font-size:
+                12px;
+
+            color:
+                #7b8794;
+
+        }
+
+
+        /* ==================================================
+           MAP CARD
+        ================================================== */
+
+        .card {
+
+            background:
+                white;
+
+            border:
+                1px solid #e1e7ee;
+
+            border-radius:
+                10px;
+
+            box-shadow:
+                0 2px 7px
+                rgba(0,0,0,0.04);
+
+        }
+
+
+        .map-card {
+
+            padding:
+                14px;
+
+        }
+
+
+        #map {
+
+            width:
+                100%;
+
+            height:
+                500px;
+
+            border-radius:
+                7px;
+
+            overflow:
+                hidden;
+
+        }
+
+
+        .map-note {
+
+            margin-top:
+                9px;
+
+            font-size:
+                12px;
+
+            color:
+                #6b7c93;
+
+        }
+
+
+        /* ==================================================
+           STATUS
+        ================================================== */
+
+        .status {
+
+            display:
+                none;
+
+            padding:
+                11px 13px;
+
+            margin-top:
+                12px;
+
+            border-radius:
+                7px;
+
+            font-size:
+                13px;
+
+            line-height:
+                1.5;
+
+        }
+
+
+        .status.success {
+
+            display:
+                block;
+
+            background:
+                #eaf8ef;
+
+            border:
+                1px solid #c6ead2;
+
+            color:
+                #1d6b3a;
+
+        }
+
+
+        .status.error {
+
+            display:
+                block;
+
+            background:
+                #fff0f0;
+
+            border:
+                1px solid #f4cccc;
+
+            color:
+                #a12626;
+
+        }
+
+
+        .status.loading {
+
+            display:
+                block;
+
+            background:
+                #edf7fb;
+
+            border:
+                1px solid #cfe7ef;
+
+            color:
+                #215d75;
+
+        }
+
+
+        /* ==================================================
+           METRIC CARDS
+        ================================================== */
+
+        .metrics {
+
+            display:
+                grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap:
+                12px;
+
+            margin-top:
+                18px;
+
+        }
+
+
+        .metric {
+
+            background:
+                white;
+
+            border:
+                1px solid #e1e7ee;
+
+            border-radius:
+                10px;
+
+            padding:
+                15px 16px;
+
+            box-shadow:
+                0 2px 7px
+                rgba(0,0,0,0.04);
+
+        }
+
+
+        .metric-label {
+
+            font-size:
+                11px;
+
+            text-transform:
+                uppercase;
+
+            letter-spacing:
+                0.07em;
+
+            font-weight:
+                700;
+
+            color:
+                #7b8794;
+
+        }
+
+
+        .metric-value {
+
+            font-size:
+                25px;
+
+            font-weight:
+                700;
+
+            color:
+                #0b6f8c;
+
+            margin-top:
+                6px;
+
+        }
+
+
+        .metric-description {
+
+            margin-top:
+                4px;
+
+            font-size:
+                11px;
+
+            color:
+                #9aa5b1;
+
+        }
+
+
+        /* ==================================================
+           RESULTS
+        ================================================== */
+
+        .results {
+
+            margin-top:
+                18px;
+
+            display:
+                none;
+
+        }
+
+
+        .results-grid {
+
+            display:
+                grid;
+
+            grid-template-columns:
+                0.72fr
+                1.28fr;
+
+            gap:
+                12px;
+
+        }
+
+
+        .result-card {
+
+            background:
+                white;
+
+            border:
+                1px solid #e1e7ee;
+
+            border-radius:
+                10px;
+
+            padding:
+                16px;
+
+            box-shadow:
+                0 2px 7px
+                rgba(0,0,0,0.04);
+
+        }
+
+
+        .result-card h3 {
+
+            margin:
+                0 0 13px;
+
+            font-size:
+                16px;
+
+            color:
+                #243b53;
+
+        }
+
+
+        /* ==================================================
+           PROFILE TABLE
+        ================================================== */
+
+        .table-wrapper {
+
+            max-height:
+                410px;
+
+            overflow-y:
+                auto;
+
+        }
+
+
+        table {
+
+            width:
+                100%;
+
+            border-collapse:
+                collapse;
+
+            font-size:
+                13px;
+
+        }
+
+
+        th {
+
+            position:
+                sticky;
+
+            top:
+                0;
+
+            background:
+                #f7fafc;
+
+            color:
+                #52606d;
+
+            font-size:
+                11px;
+
+            text-transform:
+                uppercase;
+
+            letter-spacing:
+                0.04em;
+
+            z-index:
+                2;
+
+        }
+
+
+        th,
+        td {
+
+            padding:
+                9px 8px;
+
+            text-align:
+                right;
+
+            border-bottom:
+                1px solid #edf2f7;
+
+        }
+
+
+        tbody tr:hover {
+
+            background:
+                #f8fbfd;
+
+        }
+
+
+        /* ==================================================
+           CHART
+        ================================================== */
+
+        .chart-wrapper {
+
+            width:
+                100%;
+
+            min-height:
+                410px;
+
+        }
+
+
+        #profileCanvas {
+
+            width:
+                100%;
+
+            height:
+                410px;
+
+            display:
+                block;
+
+            background:
+                #ffffff;
+
+            border-radius:
+                7px;
+
+        }
+
+
+        /* ==================================================
+           FOOTER / MODEL INFO
+        ================================================== */
+
+        .model-info {
+
+            margin-top:
+                12px;
+
+            display:
+                grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap:
+                12px;
+
+        }
+
+
+        .model-info-item {
+
+            background:
+                white;
+
+            border:
+                1px solid #e1e7ee;
+
+            border-radius:
+                10px;
+
+            padding:
+                13px 15px;
+
+        }
+
+
+        .model-info-item .label {
+
+            font-size:
+                11px;
+
+            color:
+                #7b8794;
+
+            text-transform:
+                uppercase;
+
+            font-weight:
+                700;
+
+        }
+
+
+        .model-info-item .value {
+
+            margin-top:
+                5px;
+
+            font-size:
+                14px;
+
+            font-weight:
+                600;
+
+            color:
+                #243b53;
+
+        }
+
+
+        /* ==================================================
+           RESPONSIVE
+        ================================================== */
+
+        @media (
+            max-width: 1100px
+        ) {
+
+            .app-layout {
+
+                grid-template-columns:
+                    235px
+                    minmax(0, 1fr);
+
+            }
+
+            .metrics {
+
+                grid-template-columns:
+                    repeat(2, 1fr);
+
+            }
+
+            .results-grid {
+
+                grid-template-columns:
+                    1fr;
+
+            }
+
+        }
+
+
+        @media (
+            max-width: 800px
+        ) {
+
+            .app-layout {
+
+                grid-template-columns:
+                    1fr;
+
+            }
+
+            .sidebar {
+
+                border-right:
+                    none;
+
+                border-bottom:
+                    1px solid #e1e7ee;
+
+            }
+
+            .metrics {
+
+                grid-template-columns:
+                    repeat(2, 1fr);
+
+            }
+
+            .model-info {
+
+                grid-template-columns:
+                    1fr;
+
+            }
+
+            #map {
+
+                height:
+                    420px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- ================================================== -->
+    <!-- HEADER -->
+    <!-- ================================================== -->
+
+    <header class="topbar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                🌊
+            </div>
+
+            <div class="brand-text">
+
+                <h1>
+                    OceanEmbed
+                </h1>
+
+                <p>
+                    North Indian Ocean Subsurface Temperature Reconstruction
+                </p>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- ================================================== -->
+    <!-- APP -->
+    <!-- ================================================== -->
+
+    <div class="app-layout">
+
+
+        <!-- ================================================== -->
+        <!-- SIDEBAR -->
+        <!-- ================================================== -->
+
+        <aside class="sidebar">
+
+
+            <!-- LOCATION -->
+
+            <div class="sidebar-section">
+
+                <div class="sidebar-title">
+                    Location
+                </div>
+
+
+                <div class="field">
+
+                    <label for="latitude">
+                        Latitude
+                    </label>
+
+                    <input
+                        id="latitude"
+                        type="number"
+                        step="0.01"
+                        min="5"
+                        max="30"
+                        value="11.34"
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label for="longitude">
+                        Longitude
+                    </label>
+
+                    <input
+                        id="longitude"
+                        type="number"
+                        step="0.01"
+                        min="45"
+                        max="105"
+                        value="89.33"
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label for="date">
+                        Date
+                    </label>
+
+                    <input
+                        id="date"
+                        type="date"
+                        min="2023-01-01"
+                        max="2024-12-15"
+                        value="2024-12-15"
+                    >
+
+                </div>
+
+
+                <button
+                    id="predictButton"
+                    class="predict-button"
+                    onclick="runPrediction()"
+                >
+
+                    Predict Temperature
+
+                </button>
+
+
+                <div
+                    id="status"
+                    class="status"
+                ></div>
+
+            </div>
+
+
+            <!-- MODEL -->
+
+            <div class="sidebar-section">
+
+                <div class="sidebar-title">
+                    Model
+                </div>
+
+
+                <div class="info-box">
+
+                    <div class="info-row">
+                        <span>Training</span>
+                        <strong>2023</strong>
+                    </div>
+
+                    <div class="info-row">
+                        <span>Validation</span>
+                        <strong>2024</strong>
+                    </div>
+
+                    <div class="info-row">
+                        <span>Grid</span>
+                        <strong>0.25°</strong>
+                    </div>
+
+                    <div class="info-row">
+                        <span>Inputs</span>
+                        <strong>7</strong>
+                    </div>
+
+                    <div class="info-row">
+                        <span>Depths</span>
+                        <strong>15</strong>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- DOMAIN -->
+
+            <div class="sidebar-section">
+
+                <div class="sidebar-title">
+                    Domain
+                </div>
+
+
+                <div class="info-box">
+
+                    <div>
+                        North Indian Ocean
+                    </div>
+
+                    <div>
+                        5°N – 30°N
+                    </div>
+
+                    <div>
+                        45°E – 105°E
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- INPUT VARIABLES -->
+
+            <div class="sidebar-section">
+
+                <div class="sidebar-title">
+                    Surface Inputs
+                </div>
+
+
+                <div class="info-box">
+
+                    SST<br>
+                    SSS<br>
+                    SSH / SLA<br>
+                    U / V Surface Current<br>
+                    U / V Surface Wind
+
+                </div>
+
+            </div>
+
+
+        </aside>
+
+
+        <!-- ================================================== -->
+        <!-- MAIN CONTENT -->
+        <!-- ================================================== -->
+
+        <main class="main-content">
+
+
+            <!-- MAP -->
+
+            <div class="section-heading">
+
+                <h2>
+                    Ocean Location
+                </h2>
+
+                <span>
+                    Click anywhere inside the model domain
+                </span>
+
+            </div>
+
+
+            <div class="card map-card">
+
+                <div id="map"></div>
+
+                <div class="map-note">
+
+                    Select an ocean point on the map.
+                    Land locations will be rejected automatically.
+
+                </div>
+
+            </div>
+
+
+            <!-- ================================================== -->
+            <!-- METRICS -->
+            <!-- ================================================== -->
+
+            <div class="metrics">
+
+
+                <div class="metric">
+
+                    <div class="metric-label">
+                        MAE
+                    </div>
+
+                    <div class="metric-value">
+                        0.8156 °C
+                    </div>
+
+                    <div class="metric-description">
+                        2024 hold-out validation
+                    </div>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <div class="metric-label">
+                        RMSE
+                    </div>
+
+                    <div class="metric-value">
+                        1.2104 °C
+                    </div>
+
+                    <div class="metric-description">
+                        2024 hold-out validation
+                    </div>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <div class="metric-label">
+                        Bias
+                    </div>
+
+                    <div class="metric-value">
+                        +0.1557 °C
+                    </div>
+
+                    <div class="metric-description">
+                        Mean prediction bias
+                    </div>
+
+                </div>
+
+
+                <div class="metric">
+
+                    <div class="metric-label">
+                        Samples
+                    </div>
+
+                    <div class="metric-value">
+                        46,848
+                    </div>
+
+                    <div class="metric-description">
+                        2024 validation samples
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+            <!-- ================================================== -->
+            <!-- RESULTS -->
+            <!-- ================================================== -->
+
+            <div
+                id="results"
+                class="results"
+            >
+
+
+                <div class="section-heading">
+
+                    <h2>
+                        Subsurface Temperature
+                    </h2>
+
+                    <span
+                        id="resultLocation"
+                    ></span>
+
+                </div>
+
+
+                <div class="results-grid">
+
+
+                    <!-- PROFILE TABLE -->
+
+                    <div class="result-card">
+
+                        <h3>
+                            Depth Profile
+                        </h3>
+
+
+                        <div class="table-wrapper">
+
+                            <table>
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            Depth (m)
+                                        </th>
+
+                                        <th>
+                                            Temperature (°C)
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+
+                                <tbody
+                                    id="profileBody"
+                                ></tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- GRAPH -->
+
+                    <div class="result-card">
+
+                        <h3>
+                            Temperature vs Depth
+                        </h3>
+
+
+                        <div class="chart-wrapper">
+
+                            <canvas
+                                id="profileCanvas"
+                            ></canvas>
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+
+                <!-- ================================================== -->
+                <!-- MODEL DETAILS -->
+                <!-- ================================================== -->
+
+                <div class="model-info">
+
+
+                    <div class="model-info-item">
+
+                        <div class="label">
+                            Selected Location
+                        </div>
+
+                        <div
+                            class="value"
+                            id="selectedLocation"
+                        >
+                            —
+                        </div>
+
+                    </div>
+
+
+                    <div class="model-info-item">
+
+                        <div class="label">
+                            Prediction Date
+                        </div>
+
+                        <div
+                            class="value"
+                            id="selectedDate"
+                        >
+                            —
+                        </div>
+
+                    </div>
+
+
+                    <div class="model-info-item">
+
+                        <div class="label">
+                            Reconstruction
+                        </div>
+
+                        <div class="value">
+                            15-depth temperature profile
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+
+        </main>
+
+    </div>
+
+
+    <!-- ================================================== -->
+    <!-- LEAFLET -->
+    <!-- ================================================== -->
+
+    <script
+        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    ></script>
+
+
+    <script>
+
+
+        // ====================================================
+        // MAP
+        // ====================================================
+
+        const map = L.map(
+            "map"
+        ).setView(
+            [
+                18,
+                75
+            ],
+            4
+        );
+
+
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                maxZoom:
+                    12,
+
+                attribution:
+                    "&copy; OpenStreetMap contributors"
+            }
+        ).addTo(
+            map
+        );
+
+
+        // Model domain.
+
+        const domainBounds = [
+
+            [
+                5,
+                45
+            ],
+
+            [
+                30,
+                105
+            ]
+
+        ];
+
+
+        L.rectangle(
+            domainBounds,
+            {
+
+                color:
+                    "#168aad",
+
+                weight:
+                    2,
+
+                fillOpacity:
+                    0.035
+
+            }
+        ).addTo(
+            map
+        );
+
+
+        // ====================================================
+        // MARKER
+        // ====================================================
+
+        let marker =
+            null;
+
+
+        // ====================================================
+        // MAP CLICK
+        // ====================================================
+
+        map.on(
+            "click",
+            function(event)
+            {
+
+                const lat =
+                    event.latlng.lat;
+
+                const lon =
+                    event.latlng.lng;
+
+
+                if (
+
+                    lat < 5
+                    ||
+                    lat > 30
+                    ||
+                    lon < 45
+                    ||
+                    lon > 105
+
+                ) {
+
+                    showStatus(
+                        "Selected location is outside the North Indian Ocean model domain.",
+                        "error"
+                    );
+
+                    return;
+
+                }
+
+
+                document.getElementById(
+                    "latitude"
+                ).value =
+                    lat.toFixed(2);
+
+
+                document.getElementById(
+                    "longitude"
+                ).value =
+                    lon.toFixed(2);
+
+
+                updateMarker(
+                    lat,
+                    lon
+                );
+
+            }
+        );
+
+
+        // ====================================================
+        // UPDATE MARKER
+        // ====================================================
+
+        function updateMarker(
+            lat,
+            lon
+        ) {
+
+            if (
+                marker !== null
+            ) {
+
+                map.removeLayer(
+                    marker
+                );
+
+            }
+
+
+            marker =
+                L.marker(
+                    [
+                        lat,
+                        lon
+                    ]
+                ).addTo(
+                    map
+                );
+
+
+            marker.bindPopup(
+
+                "Selected: "
+                +
+                lat.toFixed(2)
+                +
+                "°N, "
+                +
+                lon.toFixed(2)
+                +
+                "°E"
+
+            ).openPopup();
+
+        }
+
+
+        // ====================================================
+        // STATUS
+        // ====================================================
+
+        function showStatus(
+            message,
+            type
+        ) {
+
+            const status =
+                document.getElementById(
+                    "status"
+                );
+
+
+            status.textContent =
+                message;
+
+
+            status.className =
+                "status "
+                +
+                type;
+
+        }
+
+
+        // ====================================================
+        // LOADING
+        // ====================================================
+
+        function setLoading(
+            state
+        ) {
+
+            const button =
+                document.getElementById(
+                    "predictButton"
+                );
+
+
+            if (state) {
+
+                button.disabled =
+                    true;
+
+                button.textContent =
+                    "Generating...";
+
+            }
+            else {
+
+                button.disabled =
+                    false;
+
+                button.textContent =
+                    "Predict Temperature";
+
+            }
+
+        }
+
+
+        // ====================================================
+        // PREDICTION
+        // ====================================================
+
+        async function runPrediction()
+        {
+
+            const latitude =
+                parseFloat(
+                    document.getElementById(
+                        "latitude"
+                    ).value
+                );
+
+
+            const longitude =
+                parseFloat(
+                    document.getElementById(
+                        "longitude"
+                    ).value
+                );
+
+
+            const selectedDate =
+                document.getElementById(
+                    "date"
+                ).value;
+
+
+            // ------------------------------------------------
+            // VALIDATE
+            // ------------------------------------------------
+
+            if (
+
+                Number.isNaN(
+                    latitude
+                )
+
+                ||
+
+                Number.isNaN(
+                    longitude
+                )
+
+                ||
+
+                !selectedDate
+
+            ) {
+
+                showStatus(
+                    "Please provide a valid latitude, longitude and date.",
+                    "error"
+                );
+
+                return;
+
+            }
+
+
+            if (
+
+                latitude < 5
+                ||
+                latitude > 30
+                ||
+                longitude < 45
+                ||
+                longitude > 105
+
+            ) {
+
+                showStatus(
+                    "Selected location is outside the model domain.",
+                    "error"
+                );
+
+                return;
+
+            }
+
+
+            // ------------------------------------------------
+            // MARKER
+            // ------------------------------------------------
+
+            updateMarker(
+                latitude,
+                longitude
+            );
+
+
+            // ------------------------------------------------
+            // START
+            // ------------------------------------------------
+
+            setLoading(
+                true
+            );
+
+
+            showStatus(
+                "Checking location and retrieving online surface observations...",
+                "loading"
+            );
+
+
+            document.getElementById(
+                "results"
+            ).style.display =
+                "none";
+
+
+            try {
+
+                const response =
+                    await fetch(
+
+                        "/api/predict",
+
+                        {
+
+                            method:
+                                "POST",
+
+                            headers:
+                                {
+                                    "Content-Type":
+                                        "application/json"
+                                },
+
+                            body:
+                                JSON.stringify(
+                                    {
+                                        latitude:
+                                            latitude,
+
+                                        longitude:
+                                            longitude,
+
+                                        date:
+                                            selectedDate
+                                    }
+                                )
+
+                        }
+
+                    );
+
+
+                const result =
+                    await response.json();
+
+
+                // ------------------------------------------------
+                // ERROR
+                // ------------------------------------------------
+
+                if (
+
+                    !response.ok
+                    ||
+                    !result.success
+
+                ) {
+
+                    showStatus(
+
+                        result.message
+                        ||
+                        result.error
+                        ||
+                        "Prediction failed.",
+
+                        "error"
+
+                    );
+
+                    return;
+
+                }
+
+
+                // ------------------------------------------------
+                // SUCCESS
+                // ------------------------------------------------
+
+                showStatus(
+                    "Prediction completed successfully.",
+                    "success"
+                );
+
+
+                displayProfile(
+                    result.profile,
+                    latitude,
+                    longitude,
+                    selectedDate
+                );
+
+
+            }
+            catch (error) {
+
+                console.error(
+                    error
+                );
+
+
+                showStatus(
+                    "Unable to connect to the OceanEmbed server.",
+                    "error"
+                );
+
+            }
+            finally {
+
+                setLoading(
+                    false
+                );
+
+            }
+
+        }
+
+
+        // ====================================================
+        // DISPLAY PROFILE
+        // ====================================================
+
+        function displayProfile(
+
+            profile,
+
+            latitude,
+
+            longitude,
+
+            selectedDate
+
+        ) {
+
+            const body =
+                document.getElementById(
+                    "profileBody"
+                );
+
+
+            body.innerHTML =
+                "";
+
+
+            const depths = [];
+
+            const temperatures = [];
+
+
+            profile.forEach(
+                function(item)
+                {
+
+                    const depth =
+                        Number(
+                            item.depth_m
+                        );
+
+
+                    const temperature =
+                        Number(
+                            item.temperature_c
+                        );
+
+
+                    depths.push(
+                        depth
+                    );
+
+
+                    temperatures.push(
+                        temperature
+                    );
+
+
+                    const row =
+                        document.createElement(
+                            "tr"
+                        );
+
+
+                    const depthCell =
+                        document.createElement(
+                            "td"
+                        );
+
+
+                    const tempCell =
+                        document.createElement(
+                            "td"
+                        );
+
+
+                    depthCell.textContent =
+                        depth.toFixed(0);
+
+
+                    tempCell.textContent =
+                        temperature.toFixed(3);
+
+
+                    row.appendChild(
+                        depthCell
+                    );
+
+
+                    row.appendChild(
+                        tempCell
+                    );
+
+
+                    body.appendChild(
+                        row
+                    );
+
+                }
+            );
+
+
+            // ------------------------------------------------
+            // LOCATION DETAILS
+            // ------------------------------------------------
+
+            document.getElementById(
+                "resultLocation"
+            ).textContent =
+
+                latitude.toFixed(2)
+                +
+                "°N, "
+                +
+                longitude.toFixed(2)
+                +
+                "°E";
+
+
+            document.getElementById(
+                "selectedLocation"
+            ).textContent =
+
+                latitude.toFixed(2)
+                +
+                "°N, "
+                +
+                longitude.toFixed(2)
+                +
+                "°E";
+
+
+            document.getElementById(
+                "selectedDate"
+            ).textContent =
+                selectedDate;
+
+
+            // ------------------------------------------------
+            // SHOW RESULTS
+            // ------------------------------------------------
+
+            document.getElementById(
+                "results"
+            ).style.display =
+                "block";
+
+
+            // ------------------------------------------------
+            // DRAW CHART
+            // ------------------------------------------------
+
+            requestAnimationFrame(
+                function()
+                {
+
+                    drawProfileChart(
+                        depths,
+                        temperatures
+                    );
+
+                }
+            );
+
+        }
+
+
+        // ====================================================
+        // DRAW TEMPERATURE PROFILE
+        // ====================================================
+
+        function drawProfileChart(
+
+            depths,
+
+            temperatures
+
+        ) {
+
+            const canvas =
+                document.getElementById(
+                    "profileCanvas"
+                );
+
+
+            if (
+
+                !canvas
+                ||
+                depths.length === 0
+
+            ) {
+
+                return;
+
+            }
+
+
+            const rect =
+                canvas.getBoundingClientRect();
+
+
+            const width =
+                Math.max(
+                    360,
+                    Math.floor(
+                        rect.width
+                    )
+                );
+
+
+            const height =
+                410;
+
+
+            const ratio =
+                window.devicePixelRatio
+                ||
+                1;
+
+
+            canvas.width =
+                width * ratio;
+
+
+            canvas.height =
+                height * ratio;
+
+
+            canvas.style.height =
+                height + "px";
+
+
+            const ctx =
+                canvas.getContext(
+                    "2d"
+                );
+
+
+            ctx.setTransform(
+                ratio,
+                0,
+                0,
+                ratio,
+                0,
+                0
+            );
+
+
+            ctx.clearRect(
+                0,
+                0,
+                width,
+                height
+            );
+
+
+            // ------------------------------------------------
+            // MARGINS
+            // ------------------------------------------------
+
+            const left =
+                62;
+
+            const right =
+                20;
+
+            const top =
+                42;
+
+            const bottom =
+                52;
+
+
+            const graphWidth =
+                width
+                -
+                left
+                -
+                right;
+
+
+            const graphHeight =
+                height
+                -
+                top
+                -
+                bottom;
+
+
+            // ------------------------------------------------
+            // TEMPERATURE RANGE
+            // ------------------------------------------------
+
+            let minTemp =
+                Math.min(
+                    ...temperatures
+                );
+
+
+            let maxTemp =
+                Math.max(
+                    ...temperatures
+                );
+
+
+            const padding =
+                Math.max(
+                    0.5,
+                    (
+                        maxTemp
+                        -
+                        minTemp
+                    ) * 0.12
+                );
+
+
+            minTemp -=
+                padding;
+
+
+            maxTemp +=
+                padding;
+
+
+            if (
+                maxTemp -
+                minTemp
+                <
+                0.01
+            ) {
+
+                maxTemp +=
+                    1;
+
+                minTemp -=
+                    1;
+
+            }
+
+
+            // ------------------------------------------------
+            // DEPTH RANGE
+            // ------------------------------------------------
+
+            const minDepth =
+                Math.min(
+                    ...depths
+                );
+
+
+            const maxDepth =
+                Math.max(
+                    ...depths
+                );
+
+
+            // ------------------------------------------------
+            // CONVERSIONS
+            // ------------------------------------------------
+
+            function xFromTemp(
+                value
+            ) {
+
+                return left
+                    +
+                    (
+                        (
+                            value
+                            -
+                            minTemp
+                        )
+                        /
+                        (
+                            maxTemp
+                            -
+                            minTemp
+                        )
+                    )
+                    *
+                    graphWidth;
+
+            }
+
+
+            function yFromDepth(
+                value
+            ) {
+
+                return top
+                    +
+                    (
+                        (
+                            value
+                            -
+                            minDepth
+                        )
+                        /
+                        (
+                            maxDepth
+                            -
+                            minDepth
+                        )
+                    )
+                    *
+                    graphHeight;
+
+            }
+
+
+            // ------------------------------------------------
+            // BACKGROUND
+            // ------------------------------------------------
+
+            ctx.fillStyle =
+                "#ffffff";
+
+            ctx.fillRect(
+                0,
+                0,
+                width,
+                height
+            );
+
+
+            // ------------------------------------------------
+            // TITLE
+            // ------------------------------------------------
+
+            ctx.fillStyle =
+                "#172b4d";
+
+            ctx.font =
+                "bold 14px Arial";
+
+            ctx.textAlign =
+                "left";
+
+            ctx.fillText(
+                "OceanEmbed Temperature Profile",
+                left,
+                19
+            );
+
+
+            // ------------------------------------------------
+            // GRID
+            // ------------------------------------------------
+
+            ctx.strokeStyle =
+                "#e6edf2";
+
+            ctx.lineWidth =
+                1;
+
+
+            const gridCount =
+                6;
+
+
+            for (
+                let i = 0;
+                i <= gridCount;
+                i++
+            ) {
+
+                const x =
+                    left
+                    +
+                    (
+                        i
+                        /
+                        gridCount
+                    )
+                    *
+                    graphWidth;
+
+
+                ctx.beginPath();
+
+                ctx.moveTo(
+                    x,
+                    top
+                );
+
+                ctx.lineTo(
+                    x,
+                    top + graphHeight
+                );
+
+                ctx.stroke();
+
+            }
+
+
+            for (
+                let i = 0;
+                i <= gridCount;
+                i++
+            ) {
+
+                const y =
+                    top
+                    +
+                    (
+                        i
+                        /
+                        gridCount
+                    )
+                    *
+                    graphHeight;
+
+
+                ctx.beginPath();
+
+                ctx.moveTo(
+                    left,
+                    y
+                );
+
+                ctx.lineTo(
+                    left + graphWidth,
+                    y
+                );
+
+                ctx.stroke();
+
+            }
+
+
+            // ------------------------------------------------
+            // AXES
+            // ------------------------------------------------
+
+            ctx.strokeStyle =
+                "#52606d";
+
+            ctx.lineWidth =
+                1.4;
+
+
+            ctx.beginPath();
+
+            ctx.moveTo(
+                left,
+                top
+            );
+
+            ctx.lineTo(
+                left,
+                top + graphHeight
+            );
+
+            ctx.lineTo(
+                left + graphWidth,
+                top + graphHeight
+            );
+
+            ctx.stroke();
+
+
+            // ------------------------------------------------
+            // X LABELS
+            // ------------------------------------------------
+
+            ctx.fillStyle =
+                "#52606d";
+
+            ctx.font =
+                "11px Arial";
+
+            ctx.textAlign =
+                "center";
+
+
+            for (
+                let i = 0;
+                i <= gridCount;
+                i++
+            ) {
+
+                const x =
+                    left
+                    +
+                    (
+                        i
+                        /
+                        gridCount
+                    )
+                    *
+                    graphWidth;
+
+
+                const value =
+                    minTemp
+                    +
+                    (
+                        i
+                        /
+                        gridCount
+                    )
+                    *
+                    (
+                        maxTemp
+                        -
+                        minTemp
+                    );
+
+
+                ctx.fillText(
+                    value.toFixed(1),
+                    x,
+                    top
+                    +
+                    graphHeight
+                    +
+                    21
+                );
+
+            }
+
+
+            // ------------------------------------------------
+            // Y LABELS
+            // ------------------------------------------------
+
+            ctx.textAlign =
+                "right";
+
+
+            for (
+                let i = 0;
+                i <= gridCount;
+                i++
+            ) {
+
+                const y =
+                    top
+                    +
+                    (
+                        i
+                        /
+                        gridCount
+                    )
+                    *
+                    graphHeight;
+
+
+                const value =
+                    minDepth
+                    +
+                    (
+                        i
+                        /
+                        gridCount
+                    )
+                    *
+                    (
+                        maxDepth
+                        -
+                        minDepth
+                    );
+
+
+                ctx.fillText(
+                    Math.round(
+                        value
+                    ),
+                    left - 9,
+                    y + 4
+                );
+
+            }
+
+
+            // ------------------------------------------------
+            // AXIS TITLES
+            // ------------------------------------------------
+
+            ctx.font =
+                "bold 12px Arial";
+
+            ctx.textAlign =
+                "center";
+
+
+            ctx.fillText(
+                "Temperature (°C)",
+                left +
+                graphWidth / 2,
+                height - 9
+            );
+
+
+            ctx.save();
+
+
+            ctx.translate(
+                16,
+                top +
+                graphHeight / 2
+            );
+
+
+            ctx.rotate(
+                -Math.PI / 2
+            );
+
+
+            ctx.fillText(
+                "Depth (m)",
+                0,
+                0
+            );
+
+
+            ctx.restore();
+
+
+            // ------------------------------------------------
+            // PROFILE LINE
+            // ------------------------------------------------
+
+            ctx.strokeStyle =
+                "#168aad";
+
+            ctx.lineWidth =
+                3;
+
+            ctx.lineJoin =
+                "round";
+
+            ctx.lineCap =
+                "round";
+
+
+            ctx.beginPath();
+
+
+            for (
+                let i = 0;
+                i < depths.length;
+                i++
+            ) {
+
+                const x =
+                    xFromTemp(
+                        temperatures[i]
+                    );
+
+
+                const y =
+                    yFromDepth(
+                        depths[i]
+                    );
+
+
+                if (
+                    i === 0
+                ) {
+
+                    ctx.moveTo(
+                        x,
+                        y
+                    );
+
+                }
+                else {
+
+                    ctx.lineTo(
+                        x,
+                        y
+                    );
+
+                }
+
+            }
+
+
+            ctx.stroke();
+
+
+            // ------------------------------------------------
+            // POINTS
+            // ------------------------------------------------
+
+            for (
+                let i = 0;
+                i < depths.length;
+                i++
+            ) {
+
+                const x =
+                    xFromTemp(
+                        temperatures[i]
+                    );
+
+
+                const y =
+                    yFromDepth(
+                        depths[i]
+                    );
+
+
+                ctx.fillStyle =
+                    "#0b3558";
+
+
+                ctx.beginPath();
+
+
+                ctx.arc(
+                    x,
+                    y,
+                    4,
+                    0,
+                    Math.PI * 2
+                );
+
+
+                ctx.fill();
+
+            }
+
+        }
+
+
+        // ====================================================
+        // WINDOW RESIZE
+        // ====================================================
+
+        window.addEventListener(
+            "resize",
+            function()
+            {
+
+                const results =
+                    document.getElementById(
+                        "results"
+                    );
+
+
+                if (
+                    results.style.display
+                    !==
+                    "none"
+                ) {
+
+                    const rows =
+                        document.querySelectorAll(
+                            "#profileBody tr"
+                        );
+
+
+                    if (
+                        rows.length === 0
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    const depths = [];
+
+                    const temperatures = [];
+
+
+                    rows.forEach(
+                        function(row)
+                        {
+
+                            const cells =
+                                row.querySelectorAll(
+                                    "td"
+                                );
+
+
+                            depths.push(
+                                Number(
+                                    cells[0]
+                                        .textContent
+                                )
+                            );
+
+
+                            temperatures.push(
+                                Number(
+                                    cells[1]
+                                        .textContent
+                                )
+                            );
+
+                        }
+                    );
+
+
+                    drawProfileChart(
+                        depths,
+                        temperatures
+                    );
+
+                }
+
+            }
+        );
+
+
+        // ====================================================
+        // INITIAL MARKER
+        // ====================================================
+
+        updateMarker(
+            11.34,
+            89.33
+        );
+
+    </script>
+
+
+</body>
+
+</html>

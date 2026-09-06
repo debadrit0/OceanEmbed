@@ -1,0 +1,49 @@
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+
+# Large ocean datasets
+*.nc
+*.nc4
+*.grib
+*.grb
+*.zarr/
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+
+# NumPy/cache files
+*.npz
+!results/validation_2024.npz
+
+# Generated files and caches
+artifacts/
+surface_cache/
+cache/
+
+# Raw downloaded data
+data/raw/*
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Environment/secrets
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
