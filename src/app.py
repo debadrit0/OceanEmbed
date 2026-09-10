@@ -1,5 +1,5 @@
 import os
-import sys
+from functools import lru_cache
 
 import numpy as np
 import torch
@@ -14,30 +14,39 @@ BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
 )
 
-SRC_DIR = os.path.join(
-    BASE_DIR,
-    "src"
-)
-
-if SRC_DIR not in sys.path:
-    sys.path.insert(
-        0,
-        SRC_DIR
-    )
-
 
 # ============================================================
 # IMPORT OCEANEMBED COMPONENTS
 # ============================================================
+#
+# IMPORTANT:
+# These are imported through the src package because
+# ocean_mask.py and the other src files use relative imports.
+#
+# DO NOT change these to:
+# from ocean_mask import ...
+#
+# They MUST remain:
+# from src.ocean_mask import ...
+# ============================================================
 
-from model_fast import OceanEmbedFast
+from src.model_fast import OceanEmbedFast
 
-from online_year_data import (
+from src.online_year_data import (
     load_surface_patch,
+    load_surface_block,
     normalize_surface,
 )
 
-from ocean_mask import check_location
+from src.ocean_mask import (
+    check_location,
+    get_ocean_mask,
+)
+
+from src.config import (
+    LATS,
+    LONS,
+)
 
 
 # ============================================================
@@ -60,6 +69,7 @@ CHECKPOINT_PATH = os.path.join(
     "oceanembed_fast_2023.pt"
 )
 
+
 DEPTHS = np.array(
     [
         0,
@@ -81,17 +91,59 @@ DEPTHS = np.array(
     dtype=np.float32
 )
 
+
 DEVICE = torch.device(
     "cpu"
 )
 
 
 # ============================================================
-# LOAD MODEL ONCE
+# SURFACE FEATURE CONFIGURATION
+# ============================================================
+
+FEATURE_NAMES = [
+    "SST",
+    "SSS",
+    "SSH / SLA",
+    "U Current",
+    "V Current",
+    "U Wind",
+    "V Wind",
+]
+
+
+FEATURE_UNITS = [
+    "°C",
+    "PSU",
+    "m",
+    "m/s",
+    "m/s",
+    "m/s",
+    "m/s",
+]
+
+
+# ============================================================
+# CROSS-SECTION CONFIGURATION
+# ============================================================
+
+CROSS_SECTION_POINTS = 49
+
+CROSS_SECTION_LON_MIN = 46.0
+
+CROSS_SECTION_LON_MAX = 104.0
+
+
+# ============================================================
+# GLOBAL MODEL
 # ============================================================
 
 model = None
 
+
+# ============================================================
+# LOAD MODEL
+# ============================================================
 
 def load_model():
 
@@ -106,24 +158,300 @@ def load_model():
             + CHECKPOINT_PATH
         )
 
+
     model = OceanEmbedFast().to(
         DEVICE
     )
+
 
     checkpoint = torch.load(
         CHECKPOINT_PATH,
         map_location=DEVICE
     )
 
+
     model.load_state_dict(
         checkpoint["model_state"]
     )
 
+
     model.eval()
 
+
     print(
-        "OceanEmbed model loaded."
+        "OceanEmbed model loaded successfully."
     )
+
+
+# ============================================================
+# DATE VALIDATION
+# ============================================================
+
+def validate_date(
+    date_text
+):
+
+    return (
+        "2023-01-01"
+        <= date_text
+        <= "2024-12-15"
+    )
+
+
+# ============================================================
+# SAFE FLOAT
+# ============================================================
+
+def safe_float(
+    value
+):
+
+    try:
+
+        value = float(
+            value
+        )
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return None
+
+
+    if not np.isfinite(
+        value
+    ):
+
+        return None
+
+
+    return value
+
+
+# ============================================================
+# PREDICT FROM ONE 7x9x9 PATCH
+# ============================================================
+
+def predict_from_patch(
+    patch_raw
+):
+
+    patch_batched = patch_raw[
+        np.newaxis,
+        ...
+    ]
+
+
+    patch_normalized = normalize_surface(
+        patch_batched
+    )
+
+
+    x = torch.from_numpy(
+        patch_normalized.astype(
+            np.float32
+        )
+    ).to(
+        DEVICE
+    )
+
+
+    if model is None:
+
+        load_model()
+
+
+    with torch.no_grad():
+
+        prediction = model(
+            x
+        ).cpu().numpy()[0]
+
+
+    return prediction.astype(
+        np.float64
+    )
+
+
+# ============================================================
+# CONVERT PROFILE TO JSON
+# ============================================================
+
+def profile_to_json(
+    prediction
+):
+
+    profile = []
+
+
+    for depth, temperature in zip(
+        DEPTHS,
+        prediction
+    ):
+
+        profile.append(
+            {
+                "depth_m":
+                    float(
+                        depth
+                    ),
+
+                "temperature_c":
+                    round(
+                        float(
+                            temperature
+                        ),
+                        3
+                    ),
+            }
+        )
+
+
+    return profile
+
+
+# ============================================================
+# EXTRACT ACTUAL SURFACE INPUT VALUES
+# ============================================================
+
+def extract_surface_inputs(
+    patch_raw
+):
+
+    # Center grid cell of the 9x9 model patch
+    # is position [4,4].
+
+    center_values = patch_raw[
+        :,
+        4,
+        4
+    ]
+
+
+    result = []
+
+
+    for name, unit, value in zip(
+        FEATURE_NAMES,
+        FEATURE_UNITS,
+        center_values
+    ):
+
+        result.append(
+            {
+                "name":
+                    name,
+
+                "unit":
+                    unit,
+
+                "value":
+                    safe_float(
+                        value
+                    ),
+            }
+        )
+
+
+    return result
+
+
+# ============================================================
+# EXTRACT 9x9 PATCH FROM FULL SURFACE DAY
+# ============================================================
+
+def extract_surface_patch(
+    surface_day,
+    lat_index,
+    lon_index
+):
+
+    # surface_day:
+    # [7, latitude, longitude]
+
+    _, n_lat, n_lon = (
+        surface_day.shape
+    )
+
+
+    lat_index = int(
+        np.clip(
+            lat_index,
+            4,
+            n_lat - 5
+        )
+    )
+
+
+    lon_index = int(
+        np.clip(
+            lon_index,
+            4,
+            n_lon - 5
+        )
+    )
+
+
+    patch = surface_day[
+        :,
+        lat_index - 4:
+        lat_index + 5,
+        lon_index - 4:
+        lon_index + 5,
+    ]
+
+
+    return patch
+
+
+# ============================================================
+# CROSS-SECTION LONGITUDES
+# ============================================================
+
+def get_cross_section_longitudes():
+
+    candidates = np.linspace(
+        CROSS_SECTION_LON_MIN,
+        CROSS_SECTION_LON_MAX,
+        CROSS_SECTION_POINTS
+    )
+
+
+    indices = []
+
+
+    for longitude in candidates:
+
+        index = int(
+            np.argmin(
+                np.abs(
+                    np.asarray(LONS)
+                    - longitude
+                )
+            )
+        )
+
+
+        if index < 4:
+
+            continue
+
+
+        if index > len(LONS) - 5:
+
+            continue
+
+
+        if index not in indices:
+
+            indices.append(
+                index
+            )
+
+
+    return indices
 
 
 # ============================================================
@@ -150,24 +478,44 @@ def health():
 
     return jsonify(
         {
-            "status": "ok",
-            "model_loaded": model is not None,
-            "domain": {
-                "lat_min": 5,
-                "lat_max": 30,
-                "lon_min": 45,
-                "lon_max": 105,
-            },
-            "depths": [
-                float(x)
-                for x in DEPTHS
-            ]
+            "status":
+                "ok",
+
+            "model_loaded":
+                model is not None,
+
+            "domain":
+                {
+                    "lat_min":
+                        5,
+
+                    "lat_max":
+                        30,
+
+                    "lon_min":
+                        45,
+
+                    "lon_max":
+                        105,
+                },
+
+            "depths":
+                [
+                    float(x)
+                    for x in DEPTHS
+                ],
+
+            "inputs":
+                FEATURE_NAMES,
+
+            "cross_section":
+                True,
         }
     )
 
 
 # ============================================================
-# PREDICTION API
+# SINGLE POINT PREDICTION
 # ============================================================
 
 @app.route(
@@ -182,19 +530,19 @@ def predict():
             silent=True
         )
 
+
         if data is None:
 
             return jsonify(
                 {
-                    "success": False,
-                    "error": "Request must contain JSON."
+                    "success":
+                        False,
+
+                    "error":
+                        "Request must contain JSON.",
                 }
             ), 400
 
-
-        # ----------------------------------------------------
-        # INPUTS
-        # ----------------------------------------------------
 
         latitude = float(
             data.get(
@@ -202,11 +550,13 @@ def predict():
             )
         )
 
+
         longitude = float(
             data.get(
                 "longitude"
             )
         )
+
 
         selected_date = str(
             data.get(
@@ -216,47 +566,49 @@ def predict():
 
 
         # ----------------------------------------------------
-        # DOMAIN VALIDATION
+        # DOMAIN CHECK
         # ----------------------------------------------------
 
-        if (
-            latitude < 5
-            or latitude > 30
-            or longitude < 45
-            or longitude > 105
+        if not (
+            5 <= latitude <= 30
+            and
+            45 <= longitude <= 105
         ):
 
             return jsonify(
                 {
-                    "success": False,
-                    "type": "OUT_OF_DOMAIN",
+                    "success":
+                        False,
+
+                    "type":
+                        "OUT_OF_DOMAIN",
+
                     "message":
-                        "Selected location is outside the "
-                        "North Indian Ocean model domain."
+                        "Selected location is outside "
+                        "the North Indian Ocean model domain.",
                 }
             ), 400
 
 
         # ----------------------------------------------------
-        # DATE VALIDATION
-        #
-        # We restrict the demo to dates for which all of the
-        # currently configured historical input sources can
-        # be used without fabricating the entire surface state.
+        # DATE CHECK
         # ----------------------------------------------------
 
-        if (
-            selected_date < "2023-01-01"
-            or selected_date > "2024-12-15"
+        if not validate_date(
+            selected_date
         ):
 
             return jsonify(
                 {
-                    "success": False,
-                    "type": "INVALID_DATE",
+                    "success":
+                        False,
+
+                    "type":
+                        "INVALID_DATE",
+
                     "message":
                         "Please select a date between "
-                        "2023-01-01 and 2024-12-15."
+                        "2023-01-01 and 2024-12-15.",
                 }
             ), 400
 
@@ -271,15 +623,24 @@ def predict():
         )
 
 
-        if not location["is_ocean"]:
+        if not location[
+            "is_ocean"
+        ]:
 
             return jsonify(
                 {
-                    "success": False,
-                    "type": "LAND",
+                    "success":
+                        False,
+
+                    "type":
+                        location[
+                            "status"
+                        ],
+
                     "message":
-                        "Selected location is a land mass. "
-                        "Please select a location over the ocean."
+                        location[
+                            "message"
+                        ],
                 }
             ), 400
 
@@ -290,7 +651,7 @@ def predict():
 
         print()
         print(
-            "=========================================="
+            "=" * 70
         )
 
         print(
@@ -320,72 +681,30 @@ def predict():
 
 
         # ----------------------------------------------------
-        # NORMALIZE
+        # MODEL PREDICTION
         # ----------------------------------------------------
 
-        patch_raw_batched = patch_raw[
-            np.newaxis,
-            ...
-        ]
-
-
-        patch_norm = normalize_surface(
-            patch_raw_batched
+        prediction = predict_from_patch(
+            patch_raw
         )
 
 
         # ----------------------------------------------------
-        # MODEL INPUT
+        # PROFILE
         # ----------------------------------------------------
 
-        x = torch.from_numpy(
-            patch_norm.astype(
-                np.float32
-            )
-        )
-
-
-        # ----------------------------------------------------
-        # PREDICTION
-        # ----------------------------------------------------
-
-        with torch.no_grad():
-
-            prediction = model(
-                x.to(DEVICE)
-            ).cpu().numpy()[0]
-
-
-        prediction = prediction.astype(
-            np.float64
-        )
-
-
-        # ----------------------------------------------------
-        # RESPONSE
-        # ----------------------------------------------------
-
-        profile = []
-
-        for depth, temperature in zip(
-            DEPTHS,
+        profile = profile_to_json(
             prediction
-        ):
+        )
 
-            profile.append(
-                {
-                    "depth_m":
-                        float(depth),
 
-                    "temperature_c":
-                        round(
-                            float(
-                                temperature
-                            ),
-                            3
-                        )
-                }
-            )
+        # ----------------------------------------------------
+        # SURFACE INPUT VALUES
+        # ----------------------------------------------------
+
+        surface_inputs = extract_surface_inputs(
+            patch_raw
+        )
 
 
         print(
@@ -393,41 +712,83 @@ def predict():
         )
 
         print(
-            "=========================================="
+            "=" * 70
         )
 
 
+        # ----------------------------------------------------
+        # RESPONSE
+        # ----------------------------------------------------
+
         return jsonify(
             {
-                "success": True,
+                "success":
+                    True,
 
-                "location": {
-                    "latitude":
-                        latitude,
+                "location":
+                    {
+                        "latitude":
+                            latitude,
 
-                    "longitude":
-                        longitude
-                },
+                        "longitude":
+                            longitude,
+                    },
 
                 "date":
                     selected_date,
 
-                "nearest_grid": {
-                    "latitude":
-                        location.get(
-                            "nearest_lat"
-                        ),
+                "nearest_grid":
+                    {
+                        "latitude":
+                            location.get(
+                                "nearest_grid_latitude"
+                            ),
 
-                    "longitude":
-                        location.get(
-                            "nearest_lon"
-                        )
-                },
+                        "longitude":
+                            location.get(
+                                "nearest_grid_longitude"
+                            ),
+                    },
 
                 "profile":
-                    profile
+                    profile,
+
+                "surface_inputs":
+                    surface_inputs,
+
+                "model_input":
+                    {
+                        "channels":
+                            7,
+
+                        "patch_shape":
+                            [
+                                7,
+                                9,
+                                9
+                            ],
+                    },
             }
         )
+
+
+    except (
+        TypeError,
+        ValueError
+    ) as e:
+
+        return jsonify(
+            {
+                "success":
+                    False,
+
+                "type":
+                    "INVALID_REQUEST",
+
+                "error":
+                    str(e),
+            }
+        ), 400
 
 
     except Exception as e:
@@ -441,11 +802,521 @@ def predict():
             repr(e)
         )
 
+
         return jsonify(
             {
-                "success": False,
-                "type": "SERVER_ERROR",
-                "error": str(e)
+                "success":
+                    False,
+
+                "type":
+                    "SERVER_ERROR",
+
+                "error":
+                    str(e),
+            }
+        ), 500
+
+
+# ============================================================
+# CROSS-SECTION BUILDER
+# ============================================================
+
+@lru_cache(
+    maxsize=6
+)
+def build_cross_section(
+    date_text,
+    latitude
+):
+
+    latitude = float(
+        latitude
+    )
+
+
+    # --------------------------------------------------------
+    # FIND NEAREST MODEL LATITUDE
+    # --------------------------------------------------------
+
+    lat_index = int(
+        np.argmin(
+            np.abs(
+                np.asarray(LATS)
+                - latitude
+            )
+        )
+    )
+
+
+    # Keep enough space for a complete 9x9 patch
+
+    lat_index = int(
+        np.clip(
+            lat_index,
+            4,
+            len(LATS) - 5
+        )
+    )
+
+
+    section_latitude = float(
+        LATS[
+            lat_index
+        ]
+    )
+
+
+    print()
+    print(
+        "=" * 70
+    )
+
+    print(
+        "BUILDING THERMAL CROSS-SECTION"
+    )
+
+    print(
+        f"Date: {date_text}"
+    )
+
+    print(
+        f"Requested latitude: "
+        f"{latitude:.3f}"
+    )
+
+    print(
+        f"Model latitude: "
+        f"{section_latitude:.3f}"
+    )
+
+    print(
+        "Fetching online surface block..."
+    )
+
+
+    # --------------------------------------------------------
+    # GET ONE FULL SURFACE DAY
+    # --------------------------------------------------------
+
+    _, surface_raw, dates = (
+        load_surface_block(
+            date_text,
+            date_text
+        )
+    )
+
+
+    if len(dates) == 0:
+
+        raise ValueError(
+            "No surface data returned "
+            "for the selected date."
+        )
+
+
+    surface_day = np.asarray(
+        surface_raw[0],
+        dtype=np.float32
+    )
+
+
+    if surface_day.shape[0] != 7:
+
+        raise ValueError(
+            "Unexpected surface data shape: "
+            + str(
+                surface_day.shape
+            )
+        )
+
+
+    # --------------------------------------------------------
+    # LAND / OCEAN MASK
+    # --------------------------------------------------------
+
+    ocean_mask = get_ocean_mask()
+
+
+    longitude_indices = (
+        get_cross_section_longitudes()
+    )
+
+
+    patches = []
+
+    valid_indices = []
+
+
+    # --------------------------------------------------------
+    # BUILD OCEAN PATCHES
+    # --------------------------------------------------------
+
+    for lon_index in longitude_indices:
+
+        if not bool(
+            ocean_mask[
+                lat_index,
+                lon_index
+            ]
+        ):
+
+            continue
+
+
+        patch = extract_surface_patch(
+            surface_day,
+            lat_index,
+            lon_index
+        )
+
+
+        if patch.shape != (
+            7,
+            9,
+            9
+        ):
+
+            continue
+
+
+        patches.append(
+            patch
+        )
+
+
+        valid_indices.append(
+            lon_index
+        )
+
+
+    if not patches:
+
+        raise ValueError(
+            "No valid ocean points were found "
+            "for this latitude."
+        )
+
+
+    # --------------------------------------------------------
+    # NORMALIZE
+    # --------------------------------------------------------
+
+    patch_array = np.stack(
+        patches,
+        axis=0
+    )
+
+
+    patch_normalized = normalize_surface(
+        patch_array
+    )
+
+
+    x = torch.from_numpy(
+        patch_normalized.astype(
+            np.float32
+        )
+    ).to(
+        DEVICE
+    )
+
+
+    # --------------------------------------------------------
+    # BATCH INFERENCE
+    # --------------------------------------------------------
+
+    if model is None:
+
+        load_model()
+
+
+    with torch.no_grad():
+
+        predictions = model(
+            x
+        ).cpu().numpy()
+
+
+    predictions = predictions.astype(
+        np.float64
+    )
+
+
+    # predictions shape:
+    #
+    # [longitude, depth]
+    #
+    # Convert to:
+    #
+    # [depth, longitude]
+
+    temperature_matrix = (
+        predictions.T.tolist()
+    )
+
+
+    longitudes = [
+
+        float(
+            LONS[
+                index
+            ]
+        )
+
+        for index in valid_indices
+
+    ]
+
+
+    print(
+        "Cross-section complete."
+    )
+
+    print(
+        f"Ocean columns: "
+        f"{len(longitudes)}"
+    )
+
+    print(
+        "=" * 70
+    )
+
+
+    return {
+
+        "success":
+            True,
+
+        "date":
+            date_text,
+
+        "requested_latitude":
+            latitude,
+
+        "section_latitude":
+            section_latitude,
+
+        "longitudes":
+            longitudes,
+
+        "depths":
+            [
+                float(x)
+                for x in DEPTHS
+            ],
+
+        "temperature":
+            temperature_matrix,
+
+    }
+
+
+# ============================================================
+# CROSS-SECTION API
+# ============================================================
+
+@app.route(
+    "/api/cross-section",
+    methods=["POST"]
+)
+def cross_section():
+
+    try:
+
+        data = request.get_json(
+            silent=True
+        )
+
+
+        if data is None:
+
+            return jsonify(
+                {
+                    "success":
+                        False,
+
+                    "error":
+                        "Request must contain JSON.",
+                }
+            ), 400
+
+
+        latitude = float(
+            data.get(
+                "latitude"
+            )
+        )
+
+
+        longitude = float(
+            data.get(
+                "longitude"
+            )
+        )
+
+
+        selected_date = str(
+            data.get(
+                "date"
+            )
+        )
+
+
+        # ----------------------------------------------------
+        # DOMAIN
+        # ----------------------------------------------------
+
+        if not (
+            5 <= latitude <= 30
+            and
+            45 <= longitude <= 105
+        ):
+
+            return jsonify(
+                {
+                    "success":
+                        False,
+
+                    "type":
+                        "OUT_OF_DOMAIN",
+
+                    "message":
+                        "Selected location is outside "
+                        "the North Indian Ocean model domain.",
+                }
+            ), 400
+
+
+        # ----------------------------------------------------
+        # DATE
+        # ----------------------------------------------------
+
+        if not validate_date(
+            selected_date
+        ):
+
+            return jsonify(
+                {
+                    "success":
+                        False,
+
+                    "type":
+                        "INVALID_DATE",
+
+                    "message":
+                        "Please select a date between "
+                        "2023-01-01 and 2024-12-15.",
+                }
+            ), 400
+
+
+        # ----------------------------------------------------
+        # LAND / OCEAN CHECK
+        # ----------------------------------------------------
+
+        location = check_location(
+            latitude,
+            longitude
+        )
+
+
+        if not location[
+            "is_ocean"
+        ]:
+
+            return jsonify(
+                {
+                    "success":
+                        False,
+
+                    "type":
+                        location[
+                            "status"
+                        ],
+
+                    "message":
+                        location[
+                            "message"
+                        ],
+                }
+            ), 400
+
+
+        # ----------------------------------------------------
+        # BUILD CROSS-SECTION
+        # ----------------------------------------------------
+
+        result = build_cross_section(
+            selected_date,
+            round(
+                latitude,
+                4
+            )
+        )
+
+
+        # ----------------------------------------------------
+        # SELECTED LONGITUDE
+        # ----------------------------------------------------
+
+        result[
+            "selected_longitude"
+        ] = longitude
+
+
+        result[
+            "selected_grid_longitude"
+        ] = location.get(
+            "nearest_grid_longitude"
+        )
+
+
+        return jsonify(
+            result
+        )
+
+
+    except (
+        TypeError,
+        ValueError
+    ) as e:
+
+        return jsonify(
+            {
+                "success":
+                    False,
+
+                "type":
+                    "INVALID_REQUEST",
+
+                "error":
+                    str(e),
+            }
+        ), 400
+
+
+    except Exception as e:
+
+        print()
+        print(
+            "CROSS-SECTION ERROR:"
+        )
+
+        print(
+            repr(e)
+        )
+
+
+        return jsonify(
+            {
+                "success":
+                    False,
+
+                "type":
+                    "SERVER_ERROR",
+
+                "error":
+                    str(e),
             }
         ), 500
 
@@ -458,37 +1329,81 @@ if __name__ == "__main__":
 
     load_model()
 
+
     print()
-    print("=" * 70)
+    print(
+        "=" * 70
+    )
+
 
     print(
         "OCEANEMBED WEB APPLICATION"
     )
 
-    print("=" * 70)
 
     print(
-        "Domain: "
-        "5-30 N, 45-105 E"
+        "=" * 70
     )
 
-    print(
-        "Training: 2023"
-    )
 
     print(
-        "Validation: 2024"
+        "Domain: 5°N to 30°N"
     )
+
+
+    print(
+        "Longitude: 45°E to 105°E"
+    )
+
+
+    print(
+        "Training year: 2023"
+    )
+
+
+    print(
+        "Validation year: 2024"
+    )
+
 
     print(
         "Surface data: ONLINE"
     )
 
+
     print(
-        "Server: http://127.0.0.1:5000"
+        "Thermal cross-section: ENABLED"
     )
 
-    print("=" * 70)
+
+    print(
+        "Depths:"
+    )
+
+
+    print(
+        [
+            float(x)
+            for x in DEPTHS
+        ]
+    )
+
+
+    print()
+    print(
+        "Server:"
+    )
+
+
+    print(
+        "http://127.0.0.1:5000"
+    )
+
+
+    print(
+        "=" * 70
+    )
+
 
     app.run(
         host="127.0.0.1",
