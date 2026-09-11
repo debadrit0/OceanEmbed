@@ -1870,6 +1870,99 @@
         }
 
 
+        .depth-selector {
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            gap:
+                7px;
+
+            flex-shrink:
+                0;
+
+        }
+
+
+        .depth-selector label {
+
+            color:
+                var(--muted);
+
+            font-size:
+                8px;
+
+            font-weight:
+                800;
+
+            white-space:
+                nowrap;
+
+        }
+
+
+        .depth-select {
+
+            min-width:
+                105px;
+
+            height:
+                31px;
+
+            padding:
+                0 9px;
+
+            border:
+                1px solid
+                var(--border-grey);
+
+            border-radius:
+                7px;
+
+            outline:
+                none;
+
+            background:
+                white;
+
+            color:
+                var(--deep-blue);
+
+            font-family:
+                inherit;
+
+            font-size:
+                9px;
+
+            font-weight:
+                800;
+
+            cursor:
+                pointer;
+
+        }
+
+
+        .depth-select:focus {
+
+            border-color:
+                var(--blue);
+
+            box-shadow:
+                0 0 0 3px
+                rgba(
+                    11,
+                    67,
+                    109,
+                    0.10
+                );
+
+        }
+
+
         .table-wrap {
 
             max-height:
@@ -4247,7 +4340,7 @@
                         </strong>
 
                         <small>
-                            OceanEmbedFast
+                            OceanEmbed V2
                         </small>
 
                     </div>
@@ -4756,14 +4849,46 @@
                         <div class="card-title">
 
 
-                            <h3>
-                                Depth Profile
-                            </h3>
+                            <div>
+
+                                <h3>
+                                    Depth Profile
+                                </h3>
+
+                                <span>
+                                    Temperature (°C)
+                                </span>
+
+                            </div>
 
 
-                            <span>
-                                Temperature (°C)
-                            </span>
+                            <div class="depth-selector">
+
+                                <label for="depthSelect">Depth</label>
+
+                                <select
+                                    id="depthSelect"
+                                    class="depth-select"
+                                >
+                                    <option value="all">All depths</option>
+                                    <option value="0">0 m</option>
+                                    <option value="5">5 m</option>
+                                    <option value="10">10 m</option>
+                                    <option value="20">20 m</option>
+                                    <option value="30">30 m</option>
+                                    <option value="50">50 m</option>
+                                    <option value="75">75 m</option>
+                                    <option value="100">100 m</option>
+                                    <option value="125">125 m</option>
+                                    <option value="150">150 m</option>
+                                    <option value="200">200 m</option>
+                                    <option value="300">300 m</option>
+                                    <option value="500">500 m</option>
+                                    <option value="700">700 m</option>
+                                    <option value="1000">1000 m</option>
+                                </select>
+
+                            </div>
 
 
                         </div>
@@ -5007,7 +5132,7 @@
 
                 <p>
 
-                    OceanEmbedFast is a compact convolutional
+                    OceanEmbed V2 is a compact convolutional
                     neural network that receives seven surface
                     channels over a 9×9 spatial patch and
                     outputs temperature at fifteen target
@@ -6434,6 +6559,10 @@
     ];
 
 
+    let selectedDepth =
+        "all";
+
+
     let marker =
         null;
 
@@ -6988,6 +7117,80 @@
 
 
     // ========================================================
+    // PROFILE DEPTH FILTER
+    // ========================================================
+
+    function getVisibleProfile(
+        profile
+    )
+    {
+
+        if (
+            selectedDepth ===
+            "all"
+        )
+        {
+
+            return profile;
+
+        }
+
+
+        return profile.filter(
+            item =>
+                Number(
+                    item.depth_m
+                ) ===
+                Number(
+                    selectedDepth
+                )
+        );
+
+    }
+
+
+    function updateDepthSelection()
+    {
+
+        const selector =
+            document.getElementById(
+                "depthSelect"
+            );
+
+
+        if (!selector)
+        {
+
+            return;
+
+        }
+
+
+        selectedDepth =
+            selector.value;
+
+
+        if (
+            lastPrediction
+            &&
+            lastPrediction.profile
+        )
+        {
+
+            renderProfile(
+                lastPrediction.profile
+            );
+
+            drawProfileChart(
+                lastPrediction.profile
+            );
+
+        }
+
+    }
+
+
+    // ========================================================
     // PROFILE TABLE
     // ========================================================
 
@@ -7006,7 +7209,13 @@
             "";
 
 
-        profile.forEach(
+        const visibleProfile =
+            getVisibleProfile(
+                profile
+            );
+
+
+        visibleProfile.forEach(
             item =>
             {
 
@@ -7302,6 +7511,24 @@
         profile
     )
     {
+
+        profile =
+            getVisibleProfile(
+                profile
+            );
+
+
+        if (
+            !profile
+            ||
+            profile.length === 0
+        )
+        {
+
+            return;
+
+        }
+
 
         const canvas =
             document.getElementById(
@@ -8705,6 +8932,27 @@
             );
 
         }
+
+    }
+
+
+    // ========================================================
+    // DEPTH SELECTOR
+    // ========================================================
+
+    const depthSelect =
+        document.getElementById(
+            "depthSelect"
+        );
+
+
+    if (depthSelect)
+    {
+
+        depthSelect.addEventListener(
+            "change",
+            updateDepthSelection
+        );
 
     }
 
