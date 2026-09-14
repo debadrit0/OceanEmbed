@@ -12,7 +12,7 @@ function App(){
  const [point,setPoint]=useState({lat:15,lon:85});
  const fake=useMemo(()=>depths.map(d=>30-0.018*d+0.7*Math.sin(d/120)),[]);
  return <div className="app">
-  <header><div><div className="eyebrow">SIH 2026 • INCOIS</div><h1>OceanEmbed AI</h1><p>Satellite surface observations → latent ocean embedding → 15-level subsurface temperature.</p></div><div className="badge">NORTH INDIAN OCEAN</div></header>
+  <header><div><div className="eyebrow">OPERATIONAL OCEANOGRAPHY • INCOIS DOMAIN</div><h1>OceanEmbed AI</h1><p>Satellite surface observations → latent ocean embedding → 15-level subsurface temperature.</p></div><div className="badge">NORTH INDIAN OCEAN</div></header>
   <section className="grid">
    <aside className="panel"><h2>Reconstruction</h2><label>Region</label><select defaultValue="nio"><option value="nio">North Indian Ocean</option><option>Bay of Bengal</option><option>Arabian Sea</option></select>
    <label>Date</label><input type="date" defaultValue="2020-08-15"/>

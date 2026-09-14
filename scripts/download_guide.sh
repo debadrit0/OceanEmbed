@@ -36,7 +36,7 @@ copernicusmarine subset \
   --output-directory "$OUT/sss" \
   --output-filename sss.nc
 
-# 3) DUACS daily SLA at 0.25 degree dataset recommended in the SIH statement
+# 3) DUACS daily SLA at 0.25 degree dataset
 copernicusmarine subset \
   --dataset-id cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.25deg_P1D \
   --variables sla \
@@ -47,8 +47,8 @@ copernicusmarine subset \
   --output-directory "$OUT/ssh" \
   --output-filename ssh.nc
 
-# 4) GLORYS target temperatures. The raw GLORYS grid is finer than the SIH grid;
-#    harmonize.py regrids/interpolates to 0.25 degrees and the 15 SIH depths.
+# 4) GLORYS target temperatures. The raw GLORYS grid is finer than the 0.25-deg grid;
+#    harmonize.py regrids/interpolates to 0.25 degrees and the 15 standard depths.
 copernicusmarine subset \
   --dataset-id cmems_mod_glo_phy_my_0.083deg_P1D-m \
   --variables thetao \

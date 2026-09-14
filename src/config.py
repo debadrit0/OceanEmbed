@@ -1,7 +1,7 @@
 from pathlib import Path
 import numpy as np
 
-# SIH 2026 problem statement: North Indian Ocean domain
+# Domain configuration: North Indian Ocean domain
 LAT_MIN, LAT_MAX = 5.0, 30.0
 LON_MIN, LON_MAX = 45.0, 105.0
 GRID_STEP = 0.25
@@ -9,7 +9,7 @@ GRID_STEP = 0.25
 LATS = np.round(np.arange(LAT_MIN, LAT_MAX + GRID_STEP/2, GRID_STEP), 5)
 LONS = np.round(np.arange(LON_MIN, LON_MAX + GRID_STEP/2, GRID_STEP), 5)
 
-# EXACT 15 target depths required by SIH
+# Standard 15 target ocean depth levels (0m - 1000m)
 DEPTHS_M = np.array([
     0, 5, 10, 20, 30,
     50, 75, 100, 125, 150,

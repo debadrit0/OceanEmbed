@@ -15,14 +15,21 @@ node_modules/
 *.grb
 *.zarr/
 
-# Model checkpoints
+# Model checkpoints (whitelist lightweight operational checkpoints)
 *.pt
 *.pth
 *.ckpt
+!checkpoints/oceanembed_embedding_v2_2023.pt
+!checkpoints/oceanembed_fast_2023.pt
 
 # NumPy/cache files
 *.npz
-!results/validation_2024.npz
+results/*.npz
+data/processed/*
+
+# Backup files
+*_backup.html
+*.bak
 
 # Generated files and caches
 artifacts/
